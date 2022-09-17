@@ -1,0 +1,10 @@
+nasm
+
+qemu-system
+
+mtools
+
+bochs
+bochs-sdl
+bochsbios
+vgabios
