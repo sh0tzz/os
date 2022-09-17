@@ -1,23 +1,29 @@
 ASM = nasm
-SRC_DIR = src
-DEST_DIR = build
- 
-all: compile floppy run clean
+SRC = src
+DEST = build
 
-compile:
-	mkdir $(DEST_DIR)
-	$(ASM) -f bin $(SRC_DIR)/boot.asm -o $(DEST_DIR)/boot.bin
-	$(ASM) -f bin $(SRC_DIR)/kernel.asm -o $(DEST_DIR)/kernel.bin
+all: structure build floppy run clean
+build: bootloader kernel
+
+structure:
+	mkdir -p $(DEST)/bootloader
+	mkdir $(DEST)/kernel
+
+bootloader:
+	$(MAKE) -C $(SRC)/bootloader DEST=$(abspath $(DEST))
+
+kernel:
+	$(MAKE) -C $(SRC)/kernel DEST=$(abspath $(DEST))
 
 floppy:
-	dd if=/dev/zero of=$(DEST_DIR)/floppy.img bs=512 count=2880
-	sudo mkfs.fat -F 12 -n "L9" $(DEST_DIR)/floppy.img
-	dd if=$(DEST_DIR)/boot.bin of=$(DEST_DIR)/floppy.img conv=notrunc
-	mcopy -i $(DEST_DIR)/floppy.img $(DEST_DIR)/kernel.bin "::kernel.bin"
-	mcopy -i $(DEST_DIR)/floppy.img img/test.txt "::test.txt"
+	dd if=/dev/zero of=$(DEST)/floppy.img bs=512 count=2880
+	sudo mkfs.fat -F 12 -n "L9" $(DEST)/floppy.img
+	dd if=$(DEST)/bootloader/stage1.bin of=$(DEST)/floppy.img conv=notrunc
+	mcopy -i $(DEST)/floppy.img $(DEST)/kernel/kernel.bin "::kernel.bin"
+	mcopy -i $(DEST)/floppy.img img/test.txt "::test.txt"
 
 run:
-	qemu-system-x86_64 -drive file=$(DEST_DIR)/floppy.img,if=floppy,format=raw
+	qemu-system-x86_64 -drive file=$(DEST)/floppy.img,if=floppy,format=raw
  
 clean:
-	rm -r $(DEST_DIR)
+	rm -r $(DEST)
