@@ -1,16 +1,22 @@
-ASM = nasm
-SRC = src
-DEST = build
+ASM 	=	nasm
+SRC		=	src
+DEST	=	build
+CC16	=	/usr/bin/watcom/binl64/wcc
+LD16	=	/usr/bin/watcom/binl64/wlink
 
 all: structure build floppy run clean
 build: bootloader kernel
+bootloader: stage1 stage2
 
 structure:
 	mkdir -p $(DEST)/bootloader
 	mkdir $(DEST)/kernel
 
-bootloader:
-	$(MAKE) -C $(SRC)/bootloader DEST=$(abspath $(DEST))
+stage1:
+	$(MAKE) -C $(SRC)/bootloader/stage1 DEST=$(abspath $(DEST))
+
+stage2:
+	$(MAKE) -C $(SRC)/bootloader/stage2 DEST=$(abspath $(DEST))
 
 kernel:
 	$(MAKE) -C $(SRC)/kernel DEST=$(abspath $(DEST))
