@@ -56,7 +56,7 @@ _after_setup:
     push es
     mov ah, 0x08
     int 0x13
-    jc error_floppy
+    jc err_floppy
     pop es
 
     ; sector count
@@ -84,9 +84,9 @@ _after_setup:
     xor dx, dx
     div word [bdb_bytes_per_sector]
     test dx, dx     ; round up
-    jz _size_rootdir_skip
+    jz _rootdir_after
     inc ax
-_size_rootdir_skip:
+_rootdir_after:
 
     ; read root directory
     mov cl, al                  ; read size => rootdir size
@@ -98,18 +98,20 @@ _size_rootdir_skip:
     ; search for kernel.bin
     xor bx, bx
     mov di, buffer
-_serach_kernel_loop:
+_serach_kernel:
     mov si, file_kernel
     mov cx, 11              ; size of string in si
     push di
     repe cmpsb
     pop di
-    je _serach_kernel_loop_end
+    je _found_kernel
     add di, 32
     inc bx
     cmp bx, [bdb_dir_entries_count]
-    jl _serach_kernel_loop
-_serach_kernel_loop_end:
+    jl _serach_kernel
+    ; failed
+    jmp err_not_found
+_found_kernel:
 
     mov ax, [di + 26]           ; 26 is offset to first cluster
     mov [kernel_cluster], ax
@@ -125,7 +127,7 @@ _serach_kernel_loop_end:
     mov bx, KERNEL_LOAD_SEGMENT
     mov es, bx
     mov bx, KERNEL_LOAD_OFFSET
-_load_kernel_loop:
+_load_kernel:
     ; first cluster = (kernel_cluster - 2) * sectors_per_cluster + start_sector
     ; start_sector = reserved_sectors + fat_count + rootdir_size
     mov ax, [kernel_cluster]
@@ -149,19 +151,18 @@ _load_kernel_loop:
     mov ax, [ds:si]
 
     or dx, dx
-    jz _load_kernel_even
-
-_load_kernel_odd:
+    jz _even
+    ; if odd
     shr ax, 4
-    jmp _load_kernel_next_after
-_load_kernel_even:
+    jmp _cluster_after
+_even:
     and ax, 0x0FFF
 
-_load_kernel_next_after:
+_cluster_after:
     cmp ax, 0x0FF8
     jae _load_kernel_end
     mov [kernel_cluster], ax
-    jmp _load_kernel_loop
+    jmp _load_kernel
 
 _load_kernel_end:
     mov dl, [ebr_drive_number]      ; boot device
@@ -187,13 +188,13 @@ reboot_on_return:
     jne reboot_on_return
     jmp 0x0FFFF:0   ; jump to start of bios
 
-error_floppy:
-    mov bx, msg_err_floppy
+err_floppy:
+    mov si, msg_floppy
     call puts
     jmp reboot_on_return
 
-error_no_kernel:
-    mov bx, msg_err_no_kernel
+err_not_found:
+    mov si, msg_not_found
     call puts
     jmp reboot_on_return
 
@@ -257,7 +258,7 @@ disk_reset:
     mov ah, 0           ; setup INT 0x13 / AH=0x00
     stc                 ; set carry flag
     int 0x13            ; INT 0x13 / AH=0x00; 
-    jc error_floppy     ; on failure jump to floppy error
+    jc err_floppy     ; on failure jump to floppy error
     popa                ; retrieve registers
     ret
 
@@ -297,7 +298,7 @@ _read_loop:
     cmp di, di
     jne _read_loop
 
-    jmp error_floppy
+    jmp err_floppy
 _read_loop_end:
     popa
 
@@ -313,8 +314,8 @@ _read_loop_end:
 ; DATA
 ;
 
-msg_err_floppy:         db "ERROR: Failed to read floppy", ENDL, 0
-msg_err_no_kernel:      db "ERROR: File KERNEL.BIN not found", ENDL, 0
+msg_floppy:         db "Failed to read floppy", ENDL, 0
+msg_not_found:      db "File KERNEL.BIN not found", ENDL, 0
 
 file_kernel:            db "KERNEL  BIN"
 
