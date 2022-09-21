@@ -1,3 +1,5 @@
 nasm
 qemu-system
 mtools
+
+watcom 16bit C compiler

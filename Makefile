@@ -33,3 +33,4 @@ run:
  
 clean:
 	rm -r $(DEST)
+	rm $(SRC)/bootloader/stage2/main.err
