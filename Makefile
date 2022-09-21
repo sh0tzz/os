@@ -25,6 +25,7 @@ floppy:
 	dd if=/dev/zero of=$(DEST)/floppy.img bs=512 count=2880
 	sudo mkfs.fat -F 12 -n "L9" $(DEST)/floppy.img
 	dd if=$(DEST)/bootloader/stage1.bin of=$(DEST)/floppy.img conv=notrunc
+	mcopy -i $(DEST)/floppy.img $(DEST)/stage2.bin "::stage2.bin"
 	mcopy -i $(DEST)/floppy.img $(DEST)/kernel/kernel.bin "::kernel.bin"
 	mcopy -i $(DEST)/floppy.img img/test.txt "::test.txt"
 

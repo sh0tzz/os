@@ -95,26 +95,26 @@ _rootdir_after:
     mov bx, buffer
     call disk_read
 
-    ; search for kernel.bin
+    ; search for stage2.bin
     xor bx, bx
     mov di, buffer
-_serach_kernel:
-    mov si, file_kernel
+_serach_file:
+    mov si, file_stage2
     mov cx, 11              ; size of string in si
     push di
     repe cmpsb
     pop di
-    je _found_kernel
+    je _found_file
     add di, 32
     inc bx
     cmp bx, [bdb_dir_entries_count]
-    jl _serach_kernel
+    jl _serach_file
     ; failed
     jmp err_not_found
-_found_kernel:
+_found_file:
 
     mov ax, [di + 26]           ; 26 is offset to first cluster
-    mov [kernel_cluster], ax
+    mov [stage2_cluster], ax
 
     ; load FAT
     mov ax, [bdb_reserved_sectors]
@@ -123,14 +123,14 @@ _found_kernel:
     mov dl, [ebr_drive_number]
     call disk_read
 
-    ; read kernel
-    mov bx, KERNEL_LOAD_SEGMENT
+    ; read file
+    mov bx, STAGE2_LOAD_SEGMENT
     mov es, bx
-    mov bx, KERNEL_LOAD_OFFSET
-_load_kernel:
-    ; first cluster = (kernel_cluster - 2) * sectors_per_cluster + start_sector
+    mov bx, STAGE2_LOAD_OFFSET
+_load_file:
+    ; first cluster = (stage2_cluster - 2) * sectors_per_cluster + start_sector
     ; start_sector = reserved_sectors + fat_count + rootdir_size
-    mov ax, [kernel_cluster]
+    mov ax, [stage2_cluster]
     add ax, 31          ; BAD
     
     mov cl, 1
@@ -140,7 +140,7 @@ _load_kernel:
     add bx, [bdb_bytes_per_sector]
 
     ; fat_index = current_cluster * 3 / 2
-    mov ax, [kernel_cluster]
+    mov ax, [stage2_cluster]
     mov cx, 3
     mul cx
     mov cx, 2
@@ -160,16 +160,16 @@ _even:
 
 _cluster_after:
     cmp ax, 0x0FF8
-    jae _load_kernel_end
-    mov [kernel_cluster], ax
-    jmp _load_kernel
+    jae _load_file_end
+    mov [stage2_cluster], ax
+    jmp _load_file
 
-_load_kernel_end:
+_load_file_end:
     mov dl, [ebr_drive_number]      ; boot device
-    mov ax, KERNEL_LOAD_SEGMENT     ; kernel memory address
+    mov ax, STAGE2_LOAD_SEGMENT     ; stage2 memory address
     mov ds, ax
     mov es, ax
-    jmp KERNEL_LOAD_SEGMENT:KERNEL_LOAD_OFFSET
+    jmp STAGE2_LOAD_SEGMENT:STAGE2_LOAD_OFFSET
 
     jmp reboot_on_return
     jmp halt
@@ -315,14 +315,14 @@ _read_loop_end:
 ;
 
 msg_floppy:         db "Failed to read floppy", ENDL, 0
-msg_not_found:      db "File KERNEL.BIN not found", ENDL, 0
+msg_not_found:      db "File STAGE2.BIN not found", ENDL, 0
 
-file_kernel:            db "KERNEL  BIN"
+file_stage2:            db "STAGE2  BIN"
 
-kernel_cluster:         dw 0
+stage2_cluster:         dw 0
 
-KERNEL_LOAD_SEGMENT     equ 0x2000
-KERNEL_LOAD_OFFSET      equ 0
+STAGE2_LOAD_SEGMENT     equ 0x2000
+STAGE2_LOAD_OFFSET      equ 0
 
 ;
 ; PADDING
